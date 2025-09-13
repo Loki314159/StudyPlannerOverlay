@@ -1,9 +1,89 @@
 import tkinter as tk
 from PIL import Image, ImageTk
 from tkinter import colorchooser
+from datetime import datetime, timedelta
+from pynput import keyboard
+import threading
+import numpy as np
 
-def settings():
-    print('open settings')
+def opensettings():
+    def savetimetable():
+        shape = (7, 24)
+        savearray = np.zeros(shape, dtype=object)
+        for dindex, day in enumerate(taskmatrix):
+            for tindex, task in enumerate(day):
+                savearray[dindex][tindex] = (task.cget('fg'), task.cget('bg'), task.cget('text'))
+        np.save('timetable.npy', savearray)
+    def loadtimetable():
+        savedarray = np.load('timetable.npy', allow_pickle=True)
+        for dindex, day in enumerate(savedarray):
+            for tindex, task in enumerate(day):
+                updatetask(days[dindex], tindex, task[0], task[1], task[2])
+        
+    settings = tk.Toplevel()
+    settings.title('Settings')
+    savebutton = tk.Button(settings, text='Save', command=savetimetable, bg='darkgrey', fg='white') 
+    savebutton.pack(expand=True)
+    loadbutton = tk.Button(settings, text='Load', command=loadtimetable, bg='darkgrey', fg='white') 
+    loadbutton.pack(expand=True)
+    settings.mainloop()
+
+
+def openoverlay():
+    overlay = tk.Toplevel()
+    overlay.title('Overlay')
+    overlay.attributes('-topmost', True)
+    # overlay.configure(bg = 'white')
+    # overlay.attributes('-transparentcolor', 'white')
+    wordcounter = tk.Label(overlay, text=f'Word Count: 0')
+    global wordcount, currentword
+    wordcount = 0
+    currentword = ''
+    
+    def update_label():
+        wordcounter.config(text=f"Total Words: {wordcount}")
+
+    def start_listener():
+        listener = keyboard.Listener(on_press=on_press)
+        listener.start()
+        listener.join()
+    def on_press(key):
+        global wordcount, currentword
+        try:
+            if key.char.isalnum():
+                currentword += key.char
+            elif key.char == ' ':
+                if currentword:
+                    wordcount += 1
+                    currentword = ''
+                    update_label()
+        except AttributeError:
+            if key == keyboard.Key.space or key == keyboard.Key.enter:
+                if currentword:
+                    wordcount += 1
+                    currentword = ''
+                    update_label()
+            elif key == keyboard.Key.esc:
+                return False
+    def currenttaskcoords():
+        now = datetime.now()
+        dindex = now.weekday()
+        hour = now.strftime('%H')
+        return dindex, hour
+    
+    def tthour():
+        now = datetime.now()
+        next_hour_start = (now + timedelta(hours=1)).replace(minute=0, second=0, microsecond=0)
+        time_difference = next_hour_start - now
+        total_seconds = int(time_difference.total_seconds())
+        minutes = total_seconds // 60
+        seconds = total_seconds % 60
+        overlay.after(1000, tthour)
+        return minutes, seconds
+
+    threading.Thread(target=start_listener, daemon=True).start()
+    wordcounter.pack()
+    overlay.mainloop()
 
 def setcolour(var, button, option):
     hex = colorchooser.askcolor()[1]
@@ -100,9 +180,8 @@ def taskmenu(day, hour, fg, bg, text):
     print(day, hour, fg, bg, text)
     taskmenu.mainloop()
 
-global copied
+global copied, copymode
 copied = ''
-global copymode
 copymode = False
 
 days = [
@@ -152,10 +231,8 @@ for i in range(24):
 
 cogimg = Image.open("cog.png").resize((24, 24), Image.LANCZOS)
 cogimg = ImageTk.PhotoImage(cogimg)
-
-# Settings button with icon
-# settings_button = tk.Button(root, image=cogimg, command=settings, relief="flat")
-# settings_button.grid(row=0, column=0, sticky='nw')
+settings_button = tk.Button(root, image=cogimg, command=opensettings, relief="flat")
+settings_button.grid(row=0, column=0, sticky='n')
 
 taskmatrix = []
 
@@ -170,7 +247,11 @@ for dindex, day in enumerate(days):
         blank.grid(row=hour, sticky='news')
         taskmatrix[dindex].append(blank)
 
-copybutton = tk.Button(root, text='CopyTog', command=copytoggle, bg='lightgrey') 
-copybutton.grid(row=0, column=0, sticky='news')
+copybutton = tk.Button(root, text='Cpy', command=copytoggle, bg='lightgrey') 
+copybutton.grid(row=0, column=0, sticky='e')
+
+ovlybutton = tk.Button(root, text='Ovly', command=openoverlay, bg='grey') 
+ovlybutton.grid(row=0, column=0, sticky='w')
+
 
 root.mainloop()
