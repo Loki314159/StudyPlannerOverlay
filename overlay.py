@@ -14,15 +14,39 @@ def setcolour(var, button, option):
         elif option == 'fg':
             button.config(fg = hex)
 
+def updatetask(day, row, fg, bg, text):
+    task = taskmatrix[days.index(day)][row]
+    task.configure(fg = fg, bg = bg, text = text)
+
+def copytoggle():
+    global copied
+    global copymode
+    global copybutton
+    if copymode:
+        copymode = False
+        copied = ''
+        copybutton.configure(background='lightgrey', fg='black')
+    else:
+        copymode = True
+        copybutton.configure(background='green', fg='black')
+
 
 def settask(day, hour, fg, bg, text):
     global copied
-    if copied:
-        print('copy')
+    global copymode    
+    if copymode:
+        if copied:
+            updatetask(day, int(hour), copied['fg'], copied['bg'], copied['text'])
+            pass
+        else:
+            copy = taskmatrix[days.index(day)][int(hour)]
+            copied = {
+                'text': copy.cget('text'),
+                'fg': copy.cget('fg'),
+                'bg': copy.cget('bg')
+            }
     else:
-        print('nocopy')
         taskmenu(day, hour, fg, bg, text)
-    print(day, hour, fg, bg, text)
 
 def taskmenu(day, hour, fg, bg, text):
     taskmenu = tk.Toplevel()
@@ -51,6 +75,14 @@ def taskmenu(day, hour, fg, bg, text):
 
     vislabel = tk.Label(taskmenu, text='Task Visualisation:')
     visbutton = tk.Button(taskmenu, textvariable=taskvar, fg=fgvar.get(), bg=bgvar.get())
+    applybutton = tk.Button(taskmenu,
+                            text='Apply',
+                            command=lambda: updatetask(
+                                dayvar.get(),
+                                int(hour),
+                                fgvar.get(),
+                                bgvar.get(),
+                                taskvar.get()))
 
     daycoord.grid(row=0, column=0)
     hourcoord.grid(row=0, column=1)
@@ -64,11 +96,14 @@ def taskmenu(day, hour, fg, bg, text):
     taskentry.grid(row=3, column=1)
     vislabel.grid(row=4, column=0)
     visbutton.grid(row=4, column=1, sticky='news')
+    applybutton.grid(row=4, column=2)
     print(day, hour, fg, bg, text)
     taskmenu.mainloop()
 
 global copied
 copied = ''
+global copymode
+copymode = False
 
 days = [
     'monday',
@@ -122,22 +157,20 @@ cogimg = ImageTk.PhotoImage(cogimg)
 # settings_button = tk.Button(root, image=cogimg, command=settings, relief="flat")
 # settings_button.grid(row=0, column=0, sticky='nw')
 
-for day in days:
-    for hour in range(24):
-        if day =='monday':
-            maths = tk.Button(text='Maths',
-                            bg='lightblue',
-                            fg='black',
-                            master=frames[day],
-                            command=lambda day=day, hour=hour: settask(day, hour, maths.cget('fg'), maths.cget('bg'), maths.cget('text')))
-            maths.grid(row=hour, sticky='news')
-        else:
-            empty = tk.Button(text='Click To Set',
-                            bg='lightgrey',
-                            fg='black',
-                            master=frames[day],
-                            command=lambda day=day, hour=hour: settask(day, hour, empty.cget('fg'), empty.cget('bg'), empty.cget('text')))
-            empty.grid(row=hour, sticky='news')
+taskmatrix = []
 
+for dindex, day in enumerate(days):
+    taskmatrix.append([])
+    for hour in range(24):
+        blank = tk.Button(text='Blank',
+                        bg='lightgrey',
+                        fg='black',
+                        master=frames[day],)
+        blank.config(command=lambda b=blank, d=day, h=hour: settask(d, h, b.cget('fg'), b.cget('bg'), b.cget('text')))
+        blank.grid(row=hour, sticky='news')
+        taskmatrix[dindex].append(blank)
+
+copybutton = tk.Button(root, text='CopyTog', command=copytoggle, bg='lightgrey') 
+copybutton.grid(row=0, column=0, sticky='news')
 
 root.mainloop()
