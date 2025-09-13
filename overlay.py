@@ -1,11 +1,74 @@
 import tkinter as tk
 from PIL import Image, ImageTk
+from tkinter import colorchooser
 
 def settings():
     print('open settings')
 
-def settask(day, row):
-    print(day, row)
+def setcolour(var, button, option):
+    hex = colorchooser.askcolor()[1]
+    if hex:
+        var.set(hex)
+        if option == 'bg':
+            button.config(bg = hex)
+        elif option == 'fg':
+            button.config(fg = hex)
+
+
+def settask(day, hour, fg, bg, text):
+    global copied
+    if copied:
+        print('copy')
+    else:
+        print('nocopy')
+        taskmenu(day, hour, fg, bg, text)
+    print(day, hour, fg, bg, text)
+
+def taskmenu(day, hour, fg, bg, text):
+    taskmenu = tk.Toplevel()
+    taskmenu.title('Set Task')
+    taskmenu.geometry('400x300')
+
+    dayvar = tk.StringVar(value=str(day))
+    daycoord = tk.Entry(taskmenu, state='readonly', textvariable=dayvar)
+
+    hourvar = tk.StringVar(value=f'From: {hour} to {hour+1}')
+    hourcoord = tk.Entry(taskmenu, state='readonly', textvariable=hourvar)
+
+    fglabel = tk.Label(taskmenu, text='Text Colour:')
+    fgvar = tk.StringVar(taskmenu, fg)
+    fgentry = tk.Entry(taskmenu, state='readonly', textvariable=fgvar)
+    fgbutton = tk.Button(taskmenu, text='Set new text colour', command=lambda: setcolour(fgvar, visbutton, 'fg'))
+
+    bglabel = tk.Label(taskmenu, text='Background Colour:')
+    bgvar = tk.StringVar(taskmenu, bg)
+    bgentry = tk.Entry(taskmenu, state='readonly', textvariable=bgvar)
+    bgbutton = tk.Button(taskmenu, text='Set new background colour', command=lambda: setcolour(bgvar, visbutton, 'bg'))
+
+    tasklabel = tk.Label(taskmenu, text='Task:')
+    taskvar = tk.StringVar(taskmenu, text)
+    taskentry = tk.Entry(taskmenu, textvariable=taskvar)
+
+    vislabel = tk.Label(taskmenu, text='Task Visualisation:')
+    visbutton = tk.Button(taskmenu, textvariable=taskvar, fg=fgvar.get(), bg=bgvar.get())
+
+    daycoord.grid(row=0, column=0)
+    hourcoord.grid(row=0, column=1)
+    fglabel.grid(row=1, column=0, sticky='e')
+    fgentry.grid(row=1, column=1)
+    fgbutton.grid(row=1, column=2)
+    bglabel.grid(row=2, column=0, sticky='e')
+    bgentry.grid(row=2, column=1)
+    bgbutton.grid(row=2, column=2)
+    tasklabel.grid(row=3, column=0)
+    taskentry.grid(row=3, column=1)
+    vislabel.grid(row=4, column=0)
+    visbutton.grid(row=4, column=1, sticky='news')
+    print(day, hour, fg, bg, text)
+    taskmenu.mainloop()
+
+global copied
+copied = ''
 
 days = [
     'monday',
@@ -38,7 +101,7 @@ for index, day in enumerate(days):
                sticky='news',
                rowspan=24)
     frames[day] = frame
-    daylabel = tk.Label(text=day.capitalize(), master=root)
+    daylabel = tk.Label(root, text=day.capitalize())
     daylabel.grid(column=index + 1, row=0)
     for i in range(24):
         frame.rowconfigure(i, weight=1)
@@ -46,27 +109,35 @@ for index, day in enumerate(days):
 
 for i in range(24):
     if i > 9:
-        timefuni = tk.Label(text=f'{i}:00', master=root)
+        timefuni = tk.Label(root, text=f'{i}:00')
         timefuni.grid(row=i + 1, column=0)
     else:
-        timefuni = tk.Label(text=f'0{i}:00', master=root)
+        timefuni = tk.Label(root, text=f'0{i}:00')
         timefuni.grid(row=i + 1, column=0, sticky='news')
 
 cogimg = Image.open("cog.png").resize((24, 24), Image.LANCZOS)
 cogimg = ImageTk.PhotoImage(cogimg)
 
 # Settings button with icon
-settings_button = tk.Button(master=root, image=cogimg, command=settings, relief="flat")
-settings_button.grid(row=0, column=0, sticky='nw')
+# settings_button = tk.Button(root, image=cogimg, command=settings, relief="flat")
+# settings_button.grid(row=0, column=0, sticky='nw')
 
 for day in days:
-    for i in range(24):
+    for hour in range(24):
         if day =='monday':
-            maths = tk.Button(text='Maths', bg='darkblue', fg='white', master=frames['monday'], command=lambda day=day, i=i: settask(day, i))
-            maths.grid(row=i, sticky='news')
+            maths = tk.Button(text='Maths',
+                            bg='lightblue',
+                            fg='black',
+                            master=frames[day],
+                            command=lambda day=day, hour=hour: settask(day, hour, maths.cget('fg'), maths.cget('bg'), maths.cget('text')))
+            maths.grid(row=hour, sticky='news')
         else:
-            empty = tk.Button(text='Click To Set', bg='lightgrey', fg='black', master=frames[day], command=lambda day=day, i=i: settask(day, i))
-            empty.grid(row=i, sticky='news')
+            empty = tk.Button(text='Click To Set',
+                            bg='lightgrey',
+                            fg='black',
+                            master=frames[day],
+                            command=lambda day=day, hour=hour: settask(day, hour, empty.cget('fg'), empty.cget('bg'), empty.cget('text')))
+            empty.grid(row=hour, sticky='news')
 
 
 root.mainloop()
