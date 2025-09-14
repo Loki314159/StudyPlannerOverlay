@@ -33,17 +33,15 @@ def openoverlay():
     overlay = tk.Toplevel()
     overlay.title('Overlay')
     overlay.attributes('-topmost', True)
-    # overlay.configure(bg = 'white')
-    # overlay.attributes('-transparentcolor', 'white')
-    wordcounter = tk.Label(overlay, text=f'Word Count: 0')
     global wordcount, currentword
     wordcount = 0
     currentword = ''
     
-    def update_label():
+    def updatewords():
         wordcounter.config(text=f"Total Words: {wordcount}")
-
-    def start_listener():
+    def updatetimer(minutes, seconds):
+        tthvar.set(f'Time to next task: {minutes}m {seconds}s')
+    def startlistener():
         listener = keyboard.Listener(on_press=on_press)
         listener.start()
         listener.join()
@@ -56,13 +54,13 @@ def openoverlay():
                 if currentword:
                     wordcount += 1
                     currentword = ''
-                    update_label()
+                    updatewords()
         except AttributeError:
             if key == keyboard.Key.space or key == keyboard.Key.enter:
                 if currentword:
                     wordcount += 1
                     currentword = ''
-                    update_label()
+                    updatewords()
             elif key == keyboard.Key.esc:
                 return False
     def currenttaskcoords():
@@ -78,11 +76,15 @@ def openoverlay():
         total_seconds = int(time_difference.total_seconds())
         minutes = total_seconds // 60
         seconds = total_seconds % 60
+        updatetimer(minutes, seconds)
         overlay.after(1000, tthour)
-        return minutes, seconds
-
-    threading.Thread(target=start_listener, daemon=True).start()
-    wordcounter.pack()
+    tthvar = tk.StringVar(overlay, 'Time to next task:')
+    timetohour = tk.Entry(overlay, state='readonly', textvariable=tthvar)
+    tthour()
+    timetohour.pack(expand=True)
+    threading.Thread(target=startlistener, daemon=True).start()
+    wordcounter = tk.Label(overlay, text=f'Word Count: 0')
+    wordcounter.pack(expand=True)
     overlay.mainloop()
 
 def setcolour(var, button, option):
@@ -200,7 +202,7 @@ root.title('Week View')
 for i in range(1, 25):
     root.rowconfigure(i, weight=1)
 root.columnconfigure([1, 2, 3, 4, 5, 6, 7], weight=4)
-root.columnconfigure([0], weight=1)
+root.columnconfigure([0], weight=2)
 frames = {}
 
 for index, day in enumerate(days):
@@ -229,11 +231,6 @@ for i in range(24):
         timefuni = tk.Label(root, text=f'0{i}:00')
         timefuni.grid(row=i + 1, column=0, sticky='news')
 
-cogimg = Image.open("cog.png").resize((24, 24), Image.LANCZOS)
-cogimg = ImageTk.PhotoImage(cogimg)
-settings_button = tk.Button(root, image=cogimg, command=opensettings, relief="flat")
-settings_button.grid(row=0, column=0, sticky='n')
-
 taskmatrix = []
 
 for dindex, day in enumerate(days):
@@ -247,11 +244,18 @@ for dindex, day in enumerate(days):
         blank.grid(row=hour, sticky='news')
         taskmatrix[dindex].append(blank)
 
-copybutton = tk.Button(root, text='Cpy', command=copytoggle, bg='lightgrey') 
-copybutton.grid(row=0, column=0, sticky='e')
+menuframe = tk.Frame(root)
 
-ovlybutton = tk.Button(root, text='Ovly', command=openoverlay, bg='grey') 
-ovlybutton.grid(row=0, column=0, sticky='w')
+cogimg = Image.open("cog.png").resize((24, 24), Image.LANCZOS)
+cogimg = ImageTk.PhotoImage(cogimg)
+settings_button = tk.Button(menuframe, image=cogimg, command=opensettings, relief="flat")
+settings_button.grid(row=0, column=0, sticky='news')
 
+copybutton = tk.Button(menuframe, text='Cpy', command=copytoggle, bg='lightgrey') 
+copybutton.grid(row=0, column=1, sticky='news')
 
+ovlybutton = tk.Button(menuframe, text='Ovly', command=openoverlay, bg='grey') 
+ovlybutton.grid(row=0, column=2, sticky='news')
+
+menuframe.grid(row=0, column=0)
 root.mainloop()
