@@ -22,6 +22,8 @@ def opensettings():
         
     settings = tk.Toplevel()
     settings.title('Settings')
+    settings.rowconfigure([0,1], weight=1)
+    settings.columnconfigure([0,1], weight=1)
     savebutton = tk.Button(settings, text='Save', command=savetimetable, bg='darkgrey', fg='white') 
     savebutton.pack(expand=True)
     loadbutton = tk.Button(settings, text='Load', command=loadtimetable, bg='darkgrey', fg='white') 
@@ -33,14 +35,28 @@ def openoverlay():
     overlay = tk.Toplevel()
     overlay.title('Overlay')
     overlay.attributes('-topmost', True)
+    overlay.rowconfigure([0,1,2], weight=1)
+    overlay.columnconfigure([0,1], weight=1)
+    overlay.geometry('300x75')
     global wordcount, currentword
     wordcount = 0
     currentword = ''
-    
     def updatewords():
         wordcounter.config(text=f"Total Words: {wordcount}")
     def updatetimer(minutes, seconds):
         tthvar.set(f'Time to next task: {minutes}m {seconds}s')
+    def updateoverlaytasks():
+        day, hour = currenttaskcoords()
+        currenttask = taskmatrix[day][hour]
+        currentdetails = (currenttask.cget('fg'), currenttask.cget('bg'), currenttask.cget('text'))
+        fauxcurrenttask.configure(fg=currentdetails[0], bg=currentdetails[1], text=currentdetails[2])
+        if hour == 23:
+            nexttask = taskmatrix[day+1][0]
+        else:
+            nexttask = taskmatrix[day][hour+1]
+        nextdetails = (nexttask.cget('fg'), nexttask.cget('bg'), nexttask.cget('text'))
+        fauxnexttask.configure(fg=nextdetails[0], bg=nextdetails[1], text=nextdetails[2])
+        overlay.after(1000, updateoverlaytasks)
     def startlistener():
         listener = keyboard.Listener(on_press=on_press)
         listener.start()
@@ -67,8 +83,8 @@ def openoverlay():
         now = datetime.now()
         dindex = now.weekday()
         hour = now.strftime('%H')
-        return dindex, hour
-    
+
+        return dindex, int(hour)
     def tthour():
         now = datetime.now()
         next_hour_start = (now + timedelta(hours=1)).replace(minute=0, second=0, microsecond=0)
@@ -78,13 +94,22 @@ def openoverlay():
         seconds = total_seconds % 60
         updatetimer(minutes, seconds)
         overlay.after(1000, tthour)
+    fauxnexttask = tk.Button(overlay)
+    fauxnexttask.grid(column=0, row=2, sticky='news')
+    fauxcurrenttask = tk.Button(overlay)
+    fauxcurrenttask.grid(column=0, row=0, sticky='news')
     tthvar = tk.StringVar(overlay, 'Time to next task:')
     timetohour = tk.Entry(overlay, state='readonly', textvariable=tthvar)
-    tthour()
-    timetohour.pack(expand=True)
+    timetohour.grid(column=0, row=1, sticky='news')
     threading.Thread(target=startlistener, daemon=True).start()
     wordcounter = tk.Label(overlay, text=f'Word Count: 0')
-    wordcounter.pack(expand=True)
+    wordcounter.grid(column=1, row=0, sticky='news')
+    notelabel = tk.Label(overlay, text='Notes:')
+    noteentry = tk.Entry(overlay)
+    notelabel.grid(column=1, row=1, sticky='news')
+    noteentry.grid(column=1, row=2, sticky='news')
+    tthour()
+    updateoverlaytasks()
     overlay.mainloop()
 
 def setcolour(var, button, option):
